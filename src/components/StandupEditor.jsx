@@ -8,7 +8,8 @@ const categories = [
   { key: "deploys", label: "Deploys" }
 ]
 
-export default function StandupEditor({ user, onChange, theme }) {
+export default function StandupEditor({ user, onChange, theme, titles, setTitles }) {
+
   const update = (day, key, value) => {
     const copy = {
       ...user,
@@ -27,13 +28,27 @@ export default function StandupEditor({ user, onChange, theme }) {
 
       <div style={styles.columns}>
         <div style={styles.block}>
-          <h3 style={{ color: theme.text }}>Ayer</h3>
+          <input
+            value={titles.yesterday}
+            onChange={e =>
+              setTitles(prev => ({ ...prev, yesterday: e.target.value }))
+            }
+            style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              background: "transparent",
+              border: "none",
+              borderBottom: `1px solid ${theme.border}`,
+              color: theme.text
+            }}
+          />
 
           {categories.map(cat => (
             <CategoryInput
               key={`yesterday-${cat.key}`}
               label={cat.label}
               type={cat.key}
+              day="yesterday"
               values={user.yesterday[cat.key]}
               onChange={v => update("yesterday", cat.key, v)}
               theme={theme}
@@ -42,13 +57,27 @@ export default function StandupEditor({ user, onChange, theme }) {
         </div>
 
         <div style={styles.block}>
-          <h3 style={{ color: theme.text }}>Hoy</h3>
+          <input
+            value={titles.today}
+            onChange={e =>
+              setTitles(prev => ({ ...prev, today: e.target.value }))
+            }
+            style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              background: "transparent",
+              border: "none",
+              borderBottom: `1px solid ${theme.border}`,
+              color: theme.text
+            }}
+          />
 
           {categories.map(cat => (
             <CategoryInput
               key={`today-${cat.key}`}
               label={cat.label}
               type={cat.key}
+              day="today"
               values={user.today[cat.key]}
               onChange={v => update("today", cat.key, v)}
               theme={theme}

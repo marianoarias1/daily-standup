@@ -2,14 +2,14 @@ import { generateSlack } from "../utils/generateSlack"
 import CopyButton from "./CopyButton"
 import { getToday } from "../utils/date"
 
-export default function SlackPreview({ users, theme }) {
+export default function SlackPreview({ users, theme, titles }) {
     if (!users || !users.length) return null
 
     const header = `Resumen Daily Front – ${getToday()} 🚀
 \n--------------------------------\n\n`
     const text =  header + users
         .filter(u => u.enabled)
-        .map(u => generateSlack(u))
+        .map(u => generateSlack(u, titles))
         .join("\n\n------------------------\n\n")
 
     return (

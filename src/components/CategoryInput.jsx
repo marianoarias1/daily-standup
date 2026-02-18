@@ -3,11 +3,28 @@ import { useState } from "react"
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
 
-export default function CategoryInput({ label, values, onChange, type, theme }) {
+export default function CategoryInput({ label, values, onChange, type, theme, day }) {
     const [input, setInput] = useState("")
     const [editingIndex, setEditingIndex] = useState(null)
+    const META_CATEGORIES = ["analysis", "tasks", "reworks"]
+    const allowMeta = day === "today" && META_CATEGORIES.includes(type)
+
 
     const isTicketCategory = TICKET_CATEGORIES.includes(type)
+    const saveEdit = () => {
+        if (editingIndex === null) return
+
+        const parsed = parseItem(values[editingIndex].text)
+
+        const copy = [...values]
+        copy[editingIndex] = {
+            ...copy[editingIndex],
+            text: parsed
+        }
+
+        onChange(copy)
+        setEditingIndex(null)
+    }
 
     const parseItem = (raw) => {
         if (!isTicketCategory) return raw
@@ -35,8 +52,13 @@ export default function CategoryInput({ label, values, onChange, type, theme }) 
 
         parts.forEach(raw => {
             const parsed = parseItem(raw)
-            if (!newValues.includes(parsed)) {
-                newValues.push(parsed)
+            if (!newValues.some(v => v.text === parsed)) {
+
+                newValues.push({
+                    text: parsed,
+                    dueDate: null,
+                    eta: null
+                })
             }
         })
 
@@ -65,10 +87,24 @@ export default function CategoryInput({ label, values, onChange, type, theme }) 
                     cursor: "text",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "space-between",
                     gap: "6px"
                 }}
             >
-                {value}
+                {value.text}
+
+                {allowMeta && value.dueDate && (
+                    <span style={{ opacity: 0.7 }}>
+                        📅 {value.dueDate}
+                    </span>
+                )}
+
+                {allowMeta && value.eta && (
+                    <span style={{ opacity: 0.7 }}>
+                        ⏳ {value.eta}
+                    </span>
+                )}
+
                 <span
                     onClick={e => {
                         e.stopPropagation()
@@ -93,7 +129,7 @@ export default function CategoryInput({ label, values, onChange, type, theme }) 
 
                     return (
                         <Chip
-                            key={ticket}
+                            key={ticket.text + i}
                             value={ticket}
                             index={i}
                             values={values}
@@ -107,52 +143,117 @@ export default function CategoryInput({ label, values, onChange, type, theme }) 
             </div>
 
             {editingIndex !== null && (
-                <textarea
-                    ref={el => {
-                        if (el) {
-                            el.style.height = "auto"
-                            el.style.height = el.scrollHeight + "px"
-                        }
-                    }}
-                    autoFocus
-                    value={values[editingIndex]}
-                    onChange={e => {
-                        const copy = [...values]
-                        copy[editingIndex] = e.target.value
-                        onChange(copy)
+                <>
+                    <textarea
+                        ref={el => {
+                            if (el) {
+                                el.style.height = "auto"
+                                el.style.height = el.scrollHeight + "px"
+                            }
+                        }}
+                        autoFocus
+                        value={values[editingIndex].text}
+                        onChange={e => {
+                            const copy = [...values]
+                            copy[editingIndex] = {
+                                ...copy[editingIndex],
+                                text: e.target.value
+                            }
+                            onChange(copy)
 
-                        e.target.style.height = "auto"
-                        e.target.style.height = e.target.scrollHeight + "px"
-                    }}
-                    onBlur={() => {
-                        const parsed = parseItem(values[editingIndex])
-                        const copy = [...values]
-                        copy[editingIndex] = parsed
-                        onChange(copy)
-                        setEditingIndex(null)
-                    }}
-                    onKeyDown={e => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault()
-                            e.target.blur()
-                        }
-                    }}
-                    style={{
-                        width: "100%",
-                        marginTop: "6px",
-                        padding: "4px 8px",
-                        borderRadius: "12px",
-                        border: `1px solid ${theme.border}`,
-                        background: theme.inputBg,
-                        color: theme.text,
-                        fontSize: "14px",
-                        resize: "none",
-                        overflow: "hidden",
-                        lineHeight: "1.4",
-                        boxSizing: "border-box"
-                    }}
-                />
+                            e.target.style.height = "auto"
+                            e.target.style.height = e.target.scrollHeight + "px"
+                        }}
+                        onBlur={() => {
+                            const parsed = parseItem(values[editingIndex].text)
+                            const copy = [...values]
+                            copy[editingIndex] = {
+                                ...copy[editingIndex],
+                                text: parsed
+                            }
+                            onChange(copy)
+                        }}
+                        onKeyDown={e => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault()
+                                saveEdit()
+                            }
+                        }}
 
+                        style={{
+                            width: "100%",
+                            marginTop: "6px",
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            border: `1px solid ${theme.border}`,
+                            background: theme.inputBg,
+                            color: theme.text,
+                            fontSize: "14px",
+                            resize: "none",
+                            overflow: "hidden",
+                            lineHeight: "1.4",
+                            boxSizing: "border-box"
+                        }}
+                    />
+                    {
+                        allowMeta && (
+                            <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+                                <input
+                                    type="date"
+                                    value={values[editingIndex].dueDate || ""}
+                                    onChange={e => {
+                                        const copy = [...values]
+                                        copy[editingIndex].dueDate = e.target.value
+                                        onChange(copy)
+                                    }}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault()
+                                            saveEdit()
+                                        }
+                                    }}
+
+                                />
+
+                                <input
+                                    type="text"
+                                    placeholder="Ej: 2 días"
+                                    value={values[editingIndex].eta || ""}
+                                    onChange={e => {
+                                        const copy = [...values]
+                                        copy[editingIndex].eta = e.target.value
+                                        onChange(copy)
+                                    }}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault()
+                                            saveEdit()
+                                        }
+                                    }}
+
+                                />
+                            </div>
+                        )
+
+                    }
+
+                    <button
+                        onClick={saveEdit}
+                        style={{
+                            marginTop: "6px",
+                            padding: "4px 8px",
+                            fontSize: "12px",
+                            borderRadius: "6px",
+                            border: `1px solid ${theme.border}`,
+                            background: theme.btnAddBg,
+                            color: theme.primary,
+                            cursor: "pointer"
+                        }}
+                    >
+                        Guardar
+                    </button>
+
+                </>
             )}
 
 

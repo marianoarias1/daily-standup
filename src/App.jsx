@@ -20,7 +20,10 @@ export default function App() {
     return localStorage.getItem("daily-theme") || "light"
   })
   const theme = themes[mode]
-
+  const [titles, setTitles] = useState({
+    yesterday: "Ayer",
+    today: "Hoy"
+  })
 
   const [users, setUsers] = useState(
     baseUsers.map(u => ({
@@ -98,11 +101,13 @@ export default function App() {
           user={activeUser}
           onChange={u => updateUser(activeUserIndex, u)}
           theme={theme}
+          titles={titles}
+          setTitles={setTitles}
         />
 
         <SlackPreview users={users}
           theme={theme}
-
+          titles={titles}
         />
       </div>
     </div>
