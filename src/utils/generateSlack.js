@@ -26,14 +26,14 @@ export function generateSlack(user, titles) {
 
 
   return `@${user.user}
-${titles.yesterday} :dardo::
+${titles.yesterday} 🎯:
 ${section("📅", "Reuniones", user.yesterday.meetings)}
 ${section("🔍", "Análisis", user.yesterday.analysis)}
 ${section(":meow_code_tap:", "Tareas", user.yesterday.tasks)}
 ${section(":this_is_fine:", "Reworks", user.yesterday.reworks)}
 ${section("💻", "Deploys", user.yesterday.deploys)}
 
-${titles.today} :cohete::
+${titles.today} 🚀:
 ${section("📅", "Reuniones", user.today.meetings)}
 ${section("🔍", "Análisis", user.today.analysis)}
 ${section(":meow_code_tap:", "Tareas", user.today.tasks)}
