@@ -29,6 +29,7 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
       <div style={styles.columns}>
         <div style={styles.block}>
           <input
+          id="yesterday-input"
             value={titles.yesterday}
             onChange={e =>
               setTitles(prev => ({ ...prev, yesterday: e.target.value }))
@@ -39,7 +40,9 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               background: "transparent",
               border: "none",
               borderBottom: `1px solid ${theme.border}`,
-              color: theme.text
+              color: theme.text,
+              marginBottom: "20px"
+
             }}
           />
 
@@ -58,6 +61,7 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
 
         <div style={styles.block}>
           <input
+          id="today-input"
             value={titles.today}
             onChange={e =>
               setTitles(prev => ({ ...prev, today: e.target.value }))
@@ -68,7 +72,8 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               background: "transparent",
               border: "none",
               borderBottom: `1px solid ${theme.border}`,
-              color: theme.text
+              color: theme.text,
+              marginBottom: "20px"
             }}
           />
 
