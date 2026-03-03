@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
@@ -9,6 +9,8 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
     const META_CATEGORIES = ["analysis", "tasks", "reworks"]
     const allowMeta = day === "today" && META_CATEGORIES.includes(type)
 
+    const [suggestions, setSuggestions] = useState([])
+    const [loading, setLoading] = useState(false)
 
     const isTicketCategory = TICKET_CATEGORIES.includes(type)
     const saveEdit = () => {
@@ -72,6 +74,39 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
             add()
         }
     }
+
+    useEffect(() => {
+        if (editingIndex === null) return
+        if (!isTicketCategory) return
+
+        const value = values[editingIndex]?.text
+
+        if (!value || value.length < 3) {
+            setSuggestions([])
+            return
+        }
+
+        const timeout = setTimeout(async () => {
+            try {
+                setLoading(true)
+
+                const res = await fetch(
+                    `http://localhost:5173/search?q=${encodeURIComponent(value)}`
+                )
+
+                const data = await res.json()
+
+                setSuggestions(data)
+            } catch (err) {
+                console.error("Error buscando en Jira:", err)
+            } finally {
+                setLoading(false)
+            }
+        }, 400)
+
+        return () => clearTimeout(timeout)
+
+    }, [editingIndex, values])
 
     function Chip({ value, index, values, onChange, theme }) {
 
@@ -236,6 +271,46 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                         )
 
                     }
+
+                    {suggestions.length > 0 && (
+                        <div
+                            style={{
+                                border: `1px solid ${theme.border}`,
+                                background: theme.card,
+                                borderRadius: "8px",
+                                marginTop: "6px",
+                                maxHeight: "200px",
+                                overflowY: "auto"
+                            }}
+                        >
+                            {suggestions.map(s => (
+                                <div
+                                    key={s.key}
+                                    onClick={() => {
+                                        const copy = [...values]
+
+                                        copy[editingIndex] = {
+                                            ...copy[editingIndex],
+                                            text: `${s.summary} https://pierce-commerce.atlassian.net/browse/${s.key}`
+                                        }
+
+                                        onChange(copy)
+                                        setSuggestions([])
+                                    }}
+                                    style={{
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        borderBottom: `1px solid ${theme.border}`
+                                    }}
+                                >
+                                    <strong>{s.key}</strong> – {s.summary}
+                                    <div style={{ fontSize: "12px", opacity: 0.6 }}>
+                                        {s.status}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <button
                         onClick={saveEdit}
