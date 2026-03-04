@@ -1,4 +1,5 @@
 import CategoryInput from "./CategoryInput"
+import { useEffect, useState } from "react"
 
 const categories = [
   { key: "meetings", label: "Reuniones" },
@@ -9,7 +10,7 @@ const categories = [
 ]
 
 export default function StandupEditor({ user, onChange, theme, titles, setTitles }) {
-
+  const [tickets, setTickets] = useState([])
   const update = (day, key, value) => {
     const copy = {
       ...user,
@@ -21,6 +22,38 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
 
     onChange(copy)
   }
+
+  useEffect(() => {
+    if (!user?.id) {
+      setTickets([])
+      return
+    }
+
+    const fetchTickets = async () => {
+      try {
+        const res = await fetch(
+          `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/sprint/654/tickets?assigneeIds=${encodeURIComponent(user.id)}`
+        )
+
+        const data = await res.json()
+
+        const normalizedTickets = (data.issues || []).map(issue => ({
+          key: issue.key,
+          summary: issue.fields.summary,
+          status: issue.fields.status?.name
+        }))
+
+        setTickets(normalizedTickets)
+
+      } catch (err) {
+        console.error("Error trayendo tickets:", err)
+        setTickets([])
+      }
+    }
+
+    fetchTickets()
+
+  }, [user?.id])
 
   return (
     <div>
@@ -52,6 +85,7 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               values={user.yesterday[cat.key]}
               onChange={v => update("yesterday", cat.key, v)}
               theme={theme}
+              tickets={tickets}
             />
           ))}
         </div>
@@ -81,6 +115,8 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               values={user.today[cat.key]}
               onChange={v => update("today", cat.key, v)}
               theme={theme}
+              tickets={tickets}
+
             />
           ))}
         </div>
