@@ -4,7 +4,7 @@ import UserList from "./components/UserList"
 import StandupEditor from "./components/StandupEditor"
 import SlackPreview from "./components/SlackPreview"
 import { themes } from "./theme"
-import DateRangePicker from "./components/datePicker"
+import DateRangePicker from "./components/DatePicker"
 
 function createEmptyDay() {
   return {
