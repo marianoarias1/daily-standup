@@ -11,7 +11,8 @@ export const themes = {
     chip: "#eef2ff",
     chipText: "#312e81",
     inputBg: "#ffffff",
-    btnAddBg: "#1e293b"
+    btnAddBg: "#1e293b",
+    rangeSelected: "#7d46d649",
 
   },
 
@@ -27,6 +28,8 @@ export const themes = {
     chip: "#1e293b",
     chipText: "#e5e7eb",
     inputBg: "#020617",
-    btnAddBg: "#e5e7eb"
+    btnAddBg: "#e5e7eb",
+    rangeSelected: "#7d46d649",
+
   }
 }

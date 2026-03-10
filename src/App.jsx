@@ -4,6 +4,7 @@ import UserList from "./components/UserList"
 import StandupEditor from "./components/StandupEditor"
 import SlackPreview from "./components/SlackPreview"
 import { themes } from "./theme"
+import DateRangePicker from "./components/datePicker"
 
 function createEmptyDay() {
   return {
@@ -34,6 +35,11 @@ export default function App() {
     }))
   )
 
+  const [dateRange, setDateRange] = useState({
+    start: null,
+    end: null
+  })
+
 
   const [activeUserIndex, setActiveUserIndex] = useState(0)
 
@@ -54,6 +60,7 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("daily-theme", mode)
   }, [mode])
+
 
   return (
     <div style={{ ...styles.page, background: theme.bg }}>
@@ -95,7 +102,11 @@ export default function App() {
           toggleUser={toggleUser}
           theme={theme}
         />
-
+        <DateRangePicker
+          value={dateRange}
+          onChange={setDateRange}
+          theme={theme}
+        />
 
         <StandupEditor
           user={activeUser}
@@ -103,6 +114,7 @@ export default function App() {
           theme={theme}
           titles={titles}
           setTitles={setTitles}
+          dateRange={dateRange}
         />
 
         <SlackPreview users={users}

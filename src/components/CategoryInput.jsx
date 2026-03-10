@@ -3,12 +3,12 @@ import { useEffect, useState } from "react"
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
 
-export default function CategoryInput({ label, values, onChange, type, theme, day }) {
+export default function CategoryInput({ label, values, onChange, type, theme, day, tickets, yesterdayTickets }) {
     const [input, setInput] = useState("")
     const [editingIndex, setEditingIndex] = useState(null)
     const META_CATEGORIES = ["analysis", "tasks", "reworks"]
     const allowMeta = day === "today" && META_CATEGORIES.includes(type)
-
+    const [suggestions, setSuggestions] = useState([])
 
     const isTicketCategory = TICKET_CATEGORIES.includes(type)
     const saveEdit = () => {
@@ -80,6 +80,36 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
             }
         }
     }, [values, editingIndex])
+
+    useEffect(() => {
+
+        if (!isTicketCategory) return
+
+        if (!input || input.length < 2) {
+            setSuggestions([])
+            return
+        }
+
+        const sourceTickets = day === "today" ? tickets : yesterdayTickets
+
+        if (!sourceTickets?.length) {
+            setSuggestions([])
+            return
+        }
+
+        const value = input.toLowerCase()
+
+        const filtered = sourceTickets
+            .filter(t =>
+                t.summary?.toLowerCase().includes(value) ||
+                t.key?.toLowerCase().includes(value) ||
+                t.key?.replace("PIERCE-", "").includes(value)
+            )
+            .slice(0, 5)
+
+        setSuggestions(filtered)
+
+    }, [input, tickets, yesterdayTickets, day])
 
     function Chip({ value, index, values, onChange, theme }) {
 
@@ -245,6 +275,8 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
 
                     }
 
+
+
                     <button
                         onClick={saveEdit}
                         style={{
@@ -266,22 +298,76 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
 
 
             <div style={styles.row}>
-                <input
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={handleKey}
-                    placeholder={
-                        isTicketCategory
-                            ? "Ej: Cebra (checkout): 9987"
-                            : "Ej: Status front"
-                    }
-                    style={{
-                        ...styles.input,
-                        background: theme.inputBg,
-                        border: `1px solid ${theme.border}`,
-                        color: theme.text
-                    }}
-                />
+                <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    position: "relative",
+                    width: "100%"
+                }}>
+
+                    <input
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKey}
+                        placeholder={
+                            isTicketCategory
+                                ? "Ej: Cebra (checkout): 9987"
+                                : "Ej: Status front"
+                        }
+                        style={{
+                            ...styles.input,
+                            background: theme.inputBg,
+                            border: `1px solid ${theme.border}`,
+                            color: theme.text
+                        }}
+                    />
+                    {suggestions.length > 0 && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                width: "100%",
+                                marginTop: "4px",
+                                border: `1px solid ${theme.border}`,
+                                background: theme.card,
+                                borderRadius: "8px",
+                                maxHeight: "200px",
+                                overflowY: "auto",
+                                zIndex: 20,
+                                boxShadow: "0 6px 18px rgba(0,0,0,0.15)"
+                            }}
+                        >
+                            {suggestions.map(s => (
+                                <div
+                                    key={s.key}
+                                    onClick={() => {
+                                        const parsed = `${s.summary} ${JIRA_BASE}${s.key.split("-")[1]}`
+
+                                        const newValues = [
+                                            ...values,
+                                            { text: parsed, dueDate: null, eta: null }
+                                        ]
+
+                                        onChange(newValues)
+                                        setSuggestions([])
+                                        setInput("")
+                                    }}
+                                    style={{
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        borderBottom: `1px solid ${theme.border}`
+                                    }}
+                                >
+                                    <strong>{s.key}</strong> – {s.summary}
+                                    <div style={{ fontSize: "12px", opacity: 0.6 }}>
+                                        {s.status}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <button
                     onClick={add}
