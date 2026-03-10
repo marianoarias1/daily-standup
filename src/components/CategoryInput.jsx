@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
 
-export default function CategoryInput({ label, values, onChange, type, theme, day, tickets }) {
+export default function CategoryInput({ label, values, onChange, type, theme, day, tickets, yesterdayTickets }) {
     const [input, setInput] = useState("")
     const [editingIndex, setEditingIndex] = useState(null)
     const META_CATEGORIES = ["analysis", "tasks", "reworks"]
@@ -14,7 +14,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
     const saveEdit = () => {
         if (editingIndex === null) return
 
-        const parsed = parseItem(values[editingIndex].text)
+        const parsed = parseItem(values[editingIndex]?.text || "")
 
         const copy = [...values]
         copy[editingIndex] = {
@@ -74,19 +74,32 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
     }
 
     useEffect(() => {
+        if (editingIndex !== null) {
+            if (!values[editingIndex]) {
+                setEditingIndex(null)
+            }
+        }
+    }, [values, editingIndex])
+
+    useEffect(() => {
+
         if (!isTicketCategory) return
-        if (day !== "today") return
 
         if (!input || input.length < 2) {
             setSuggestions([])
             return
         }
 
-        if (!tickets?.length) return
+        const sourceTickets = day === "today" ? tickets : yesterdayTickets
+
+        if (!sourceTickets?.length) {
+            setSuggestions([])
+            return
+        }
 
         const value = input.toLowerCase()
 
-        const filtered = tickets
+        const filtered = sourceTickets
             .filter(t =>
                 t.summary?.toLowerCase().includes(value) ||
                 t.key?.toLowerCase().includes(value) ||
@@ -96,7 +109,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
 
         setSuggestions(filtered)
 
-    }, [input, tickets, day])
+    }, [input, tickets, yesterdayTickets, day])
 
     function Chip({ value, index, values, onChange, theme }) {
 
@@ -167,7 +180,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
 
             </div>
 
-            {editingIndex !== null && (
+            {editingIndex !== null && values[editingIndex] && (
                 <>
                     <textarea
                         ref={el => {
@@ -177,7 +190,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             }
                         }}
                         autoFocus
-                        value={values[editingIndex].text}
+                        value={values[editingIndex]?.text || ""}
                         onChange={e => {
                             const copy = [...values]
                             copy[editingIndex] = {
@@ -190,7 +203,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             e.target.style.height = e.target.scrollHeight + "px"
                         }}
                         onBlur={() => {
-                            const parsed = parseItem(values[editingIndex].text)
+                            const parsed = parseItem(values[editingIndex]?.text || "")
                             const copy = [...values]
                             copy[editingIndex] = {
                                 ...copy[editingIndex],
@@ -225,7 +238,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
                                 <input
                                     type="date"
-                                    value={values[editingIndex].dueDate || ""}
+                                    value={values[editingIndex]?.dueDate || ""}
                                     onChange={e => {
                                         const copy = [...values]
                                         copy[editingIndex].dueDate = e.target.value
@@ -243,7 +256,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                                 <input
                                     type="text"
                                     placeholder="Ej: 2 días"
-                                    value={values[editingIndex].eta || ""}
+                                    value={values[editingIndex]?.eta || ""}
                                     onChange={e => {
                                         const copy = [...values]
                                         copy[editingIndex].eta = e.target.value
