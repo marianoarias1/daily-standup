@@ -9,6 +9,66 @@ const categories = [
   { key: "deploys", label: "Deploys" }
 ]
 
+const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
+
+function normalizeText(text = "") {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
+function classifyTickets(tickets) {
+
+  const result = {
+    analysis: [],
+    tasks: [],
+    reworks: []
+  }
+
+  tickets.forEach(t => {
+
+    const summaryNorm = normalizeText(t.summary)
+
+    // EXCLUSIONES
+    if (
+      summaryNorm.includes("[deploys]") ||
+      summaryNorm.includes("[gestion]") ||
+      summaryNorm.includes("[soporte]")
+    ) {
+      return
+    }
+
+    const ticketObj = {
+      text: `${t.summary} ${JIRA_BASE}${t.key.split("-")[1]}`,
+      dueDate: null,
+      eta: null
+    }
+
+    const isTesting = summaryNorm.includes("[testing]")
+    const isAnalysis = summaryNorm.includes("[analisis]")
+    const isDev = summaryNorm.includes("[desarrollo]")
+
+    if (isTesting) {
+      result.reworks.push(ticketObj)
+      return
+    }
+
+    if (isAnalysis) {
+      result.analysis.push(ticketObj)
+      return
+    }
+
+    if (isDev) {
+      result.tasks.push(ticketObj)
+      return
+    }
+
+  })
+
+  return result
+}
+
 export default function StandupEditor({ user, onChange, theme, titles, setTitles, dateRange }) {
   const [tickets, setTickets] = useState([])
   const [yesterdayTickets, setYesterdayTickets] = useState([])
@@ -88,6 +148,33 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
     fetchWorklogs()
 
   }, [dateRange, user?.id])
+
+  useEffect(() => {
+    if (!yesterdayTickets?.length) return
+    if (user.yesterdayAutoFilled) return
+
+    const classified = classifyTickets(yesterdayTickets)
+
+    const merge = (current = [], incoming = []) => [
+      ...current,
+      ...incoming.filter(
+        t => !current.some(c => c.text === t.text)
+      )
+    ]
+
+    const copy = {
+      ...user,
+      yesterdayAutoFilled: true,
+      yesterday: {
+        ...user.yesterday,
+        analysis: merge(user.yesterday.analysis, classified.analysis),
+        tasks: merge(user.yesterday.tasks, classified.tasks),
+        reworks: merge(user.yesterday.reworks, classified.reworks)
+      }
+    }
+
+    onChange(copy)
+  }, [yesterdayTickets])
 
   return (
     <div>

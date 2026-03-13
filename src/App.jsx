@@ -31,7 +31,8 @@ export default function App() {
       ...u,
       enabled: true,
       yesterday: createEmptyDay(),
-      today: createEmptyDay()
+      today: createEmptyDay(),
+      yesterdayAutoFilled: false
     }))
   )
 

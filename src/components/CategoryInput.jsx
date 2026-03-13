@@ -2,14 +2,19 @@ import { useEffect, useState } from "react"
 
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
-
+const QUICK_MEETINGS = [
+    "Daily general",
+    "Status front",
+    "Grooming",
+    "Retro"
+]
 export default function CategoryInput({ label, values, onChange, type, theme, day, tickets, yesterdayTickets }) {
     const [input, setInput] = useState("")
     const [editingIndex, setEditingIndex] = useState(null)
     const META_CATEGORIES = ["analysis", "tasks", "reworks"]
     const allowMeta = day === "today" && META_CATEGORIES.includes(type)
     const [suggestions, setSuggestions] = useState([])
-
+    const isMeetings = type === 'meetings'
     const isTicketCategory = TICKET_CATEGORIES.includes(type)
     const saveEdit = () => {
         if (editingIndex === null) return
@@ -70,6 +75,20 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
         if (e.key === "Enter") {
             e.preventDefault()
             add()
+        }
+    }
+
+    function toggleMeeting(label) {
+
+        const exists = values.some(v => v.text === label)
+
+        if (exists) {
+            onChange(values.filter(v => v.text !== label))
+        } else {
+            onChange([
+                ...values,
+                { text: label, dueDate: null, eta: null }
+            ])
         }
     }
 
@@ -160,7 +179,46 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
     return (
         <div style={{ marginBottom: "16px" }}>
             <strong style={{ color: theme.text }}>{label}</strong>
+            {isMeetings && (
+                <div
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "10px",
+                        marginTop: "6px",
+                        marginBottom: "6px"
+                    }}
+                >
+                    {QUICK_MEETINGS.map(m => {
 
+                        const checked = values.some(v => v.text === m)
+
+                        return (
+                            <label
+                                key={m}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    background: checked ? theme.chip : "transparent",
+                                    border: `1px solid ${theme.border}`,
+                                    padding: "4px 8px",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontSize: "12px"
+                                }}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleMeeting(m)}
+                                />
+                                {m}
+                            </label>
+                        )
+                    })}
+                </div>
+            )}
             <div style={styles.chips}>
                 {values.map((ticket, i) => {
                     if (i === editingIndex) return null
