@@ -117,7 +117,6 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
         }
 
         const value = input.toLowerCase()
-
         const filtered = sourceTickets
             .filter(t =>
                 t.summary?.toLowerCase().includes(value) ||
@@ -400,7 +399,8 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                                 <div
                                     key={s.key}
                                     onClick={() => {
-                                        const parsed = `${s.summary} ${JIRA_BASE}${s.key.split("-")[1]}`
+                                        const epicPrefix = s.epicName ? `${s.epicName} - ` : ""
+                                        const parsed = `${epicPrefix}${s.summary} ${JIRA_BASE}${s.key.split("-")[1]}`
 
                                         const newValues = [
                                             ...values,

@@ -11,6 +11,82 @@ const categories = [
 
 const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
 
+async function fetchIssueByKey(key) {
+  try {
+    const res = await fetch(
+      `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/issues/${key}`
+    )
+
+    if (!res.ok) return null
+
+    return await res.json()
+  } catch (err) {
+    console.error(`Error trayendo issue ${key}:`, err)
+    return null
+  }
+}
+
+function getEpicNameFromIssue(issue) {
+  return (
+    issue?.fields?.epic?.name ||
+    issue?.fields?.parent?.fields?.summary ||
+    null
+  )
+}
+
+async function normalizeIssuesWithEpic(issues = []) {
+  const cache = new Map()
+
+  const normalized = await Promise.all(
+    issues.map(async (issue) => {
+      const isSubtask = issue.fields?.issuetype?.subtask === true
+      const parentKey = issue.fields?.parent?.key
+
+      let epicName = null
+
+      // Caso 1: ticket normal (task)
+      if (!isSubtask) {
+        epicName =
+          issue.fields?.parent?.fields?.summary || // si parent ya es la épica
+          issue.fields?.epic?.name ||              // fallback si viene epic
+          null
+      }
+
+      // Caso 2: subtarea
+      if (isSubtask && parentKey) {
+        let parentIssue = cache.get(parentKey)
+
+        if (!parentIssue) {
+          parentIssue = await fetchIssueByKey(parentKey)
+          cache.set(parentKey, parentIssue)
+        }
+
+        epicName =
+          parentIssue?.fields?.parent?.fields?.summary || // épica real
+          parentIssue?.fields?.summary ||                 // fallback: tarea padre
+          issue.fields?.parent?.fields?.summary ||        // fallback desde payload original
+          null
+      }
+
+      return {
+        key: issue.key,
+        summary: issue.fields.summary,
+        status: issue.fields.status?.name,
+        epicName
+      }
+    })
+  )
+
+  return normalized
+}
+
+function buildTicketText(ticket) {
+  const url = `${JIRA_BASE}${ticket.key.split("-")[1]}`
+  const epicPrefix = ticket.epicName ? `${ticket.epicName} - ` : ""
+
+  return `${epicPrefix}${ticket.summary} ${url}`
+}
+
 function normalizeText(text = "") {
   return text
     .toLowerCase()
@@ -40,7 +116,7 @@ function classifyTickets(tickets) {
     }
 
     const ticketObj = {
-      text: `${t.summary} ${JIRA_BASE}${t.key.split("-")[1]}`,
+      text: buildTicketText(t),
       dueDate: null,
       eta: null
     }
@@ -99,12 +175,7 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
 
         const data = await res.json()
 
-        const normalizedTickets = (data.issues || []).map(issue => ({
-          key: issue.key,
-          summary: issue.fields.summary,
-          status: issue.fields.status?.name
-        }))
-
+        const normalizedTickets = await normalizeIssuesWithEpic(data.issues || [])
         setTickets(normalizedTickets)
 
       } catch (err) {
@@ -130,19 +201,14 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
 
       const data = await res.json()
 
-      const tickets = (data.issues || [])
-        .filter(issue =>
-          issue.fields.worklog?.worklogs?.some(
-            w => w.author.accountId === user?.id
-          )
+      const filteredIssues = (data.issues || []).filter(issue =>
+        issue.fields.worklog?.worklogs?.some(
+          w => w.author.accountId === user?.id
         )
-        .map(issue => ({
-          key: issue.key,
-          summary: issue.fields.summary,
-          status: issue.fields.status?.name
-        }))
+      )
 
-      setYesterdayTickets(tickets)
+      const normalizedYesterdayTickets = await normalizeIssuesWithEpic(filteredIssues)
+      setYesterdayTickets(normalizedYesterdayTickets)
     }
 
     fetchWorklogs()
