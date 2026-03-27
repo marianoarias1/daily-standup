@@ -124,7 +124,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                 t.key?.replace("PIERCE-", "").includes(value)
             )
             .slice(0, 5)
-
+            console.log(tickets)
         setSuggestions(filtered)
 
     }, [input, tickets, yesterdayTickets, day])
@@ -398,6 +398,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             {suggestions.map(s => (
                                 <div
                                     key={s.key}
+
                                     onClick={() => {
                                         const epicPrefix = s.epicName ? `${s.epicName} - ` : ""
                                         const parsed = `${epicPrefix}${s.summary} ${JIRA_BASE}${s.key.split("-")[1]}`

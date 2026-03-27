@@ -39,21 +39,10 @@ async function normalizeIssuesWithEpic(issues = []) {
 
   const normalized = await Promise.all(
     issues.map(async (issue) => {
-      const isSubtask = issue.fields?.issuetype?.subtask === true
       const parentKey = issue.fields?.parent?.key
+      let epicName = issue.fields?.epic?.name || null
 
-      let epicName = null
-
-      // Caso 1: ticket normal (task)
-      if (!isSubtask) {
-        epicName =
-          issue.fields?.parent?.fields?.summary || // si parent ya es la épica
-          issue.fields?.epic?.name ||              // fallback si viene epic
-          null
-      }
-
-      // Caso 2: subtarea
-      if (isSubtask && parentKey) {
+      if (parentKey) {
         let parentIssue = cache.get(parentKey)
 
         if (!parentIssue) {
@@ -61,11 +50,26 @@ async function normalizeIssuesWithEpic(issues = []) {
           cache.set(parentKey, parentIssue)
         }
 
-        epicName =
-          parentIssue?.fields?.parent?.fields?.summary || // épica real
-          parentIssue?.fields?.summary ||                 // fallback: tarea padre
-          issue.fields?.parent?.fields?.summary ||        // fallback desde payload original
-          null
+        const parentIsEpic =
+          parentIssue?.fields?.issuetype?.name === "Epic"
+
+        const parentHasParent =
+          !!parentIssue?.fields?.parent?.fields?.summary
+
+        if (parentHasParent) {
+          // issue actual = subtarea → parentIssue = tarea → parent del parent = épica
+          epicName = parentIssue.fields.parent.fields.summary
+        } else if (parentIsEpic) {
+          // issue actual = tarea → parentIssue = épica
+          epicName = parentIssue.fields.summary
+        } else {
+          // fallback conservador
+          epicName =
+            issue.fields?.epic?.name ||
+            parentIssue?.fields?.summary ||
+            issue.fields?.parent?.fields?.summary ||
+            null
+        }
       }
 
       return {
@@ -175,7 +179,8 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
 
         const data = await res.json()
 
-        const normalizedTickets = await normalizeIssuesWithEpic(data.issues || [])
+        const normalizedTickets = await normalizeIssuesWithEpic(data.issues)
+        console.log(data.issues)
         setTickets(normalizedTickets)
 
       } catch (err) {
