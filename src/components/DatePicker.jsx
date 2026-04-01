@@ -2,47 +2,58 @@ import { useState } from "react"
 import { DayPicker } from "react-day-picker"
 import "react-day-picker/dist/style.css"
 
+function parseLocalDate(dateString) {
+  if (!dateString) return undefined
+
+  const [year, month, day] = dateString.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function formatLocalDate(date) {
+  if (!date) return null
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
 export default function DateRangePicker({ value, onChange, theme }) {
-
-  const [range, setRange] = useState({
-    from: value?.start ? new Date(value.start) : undefined,
-    to: value?.end ? new Date(value.end) : undefined
-  })
-
   const [open, setOpen] = useState(false)
 
-  function handleSelect(r) {
+  const selectedRange = {
+    from: parseLocalDate(value?.start),
+    to: parseLocalDate(value?.end)
+  }
 
+  function handleSelect(r) {
     if (!r) {
-      setRange({ from: undefined, to: undefined })
       onChange({ start: null, end: null })
       return
     }
 
-    setRange(r)
-
-    const start = r.from ? r.from.toISOString().slice(0, 10) : null
-    const end = r.to ? r.to.toISOString().slice(0, 10) : null
+    const start = formatLocalDate(r.from)
+    const end = formatLocalDate(r.to)
 
     onChange({ start, end })
 
-    // cerrar solo si hay rango real
     if (r.from && r.to && r.from.getTime() !== r.to.getTime()) {
       setOpen(false)
     }
   }
 
-  const label = range.from
-    ? `${range.from.toLocaleDateString()} → ${range.to && range.to.getTime() !== range.from.getTime()
-      ? range.to.toLocaleDateString()
-      : "..."
-    }`
+  const label = selectedRange.from
+    ? `${selectedRange.from.toLocaleDateString("es-AR")} → ${
+        selectedRange.to &&
+        selectedRange.to.getTime() !== selectedRange.from.getTime()
+          ? selectedRange.to.toLocaleDateString("es-AR")
+          : "..."
+      }`
     : "Seleccionar rango"
 
   return (
     <div style={{ position: "relative" }}>
-
-      {/* botón */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -58,7 +69,6 @@ export default function DateRangePicker({ value, onChange, theme }) {
         📅 {label}
       </button>
 
-      {/* popup calendario */}
       {open && (
         <div
           style={{
@@ -73,10 +83,9 @@ export default function DateRangePicker({ value, onChange, theme }) {
             zIndex: 100
           }}
         >
-
           <DayPicker
             mode="range"
-            selected={range}
+            selected={selectedRange}
             onSelect={handleSelect}
             showOutsideDays
             style={{
@@ -87,7 +96,7 @@ export default function DateRangePicker({ value, onChange, theme }) {
               "--rdp-range_middle-color": theme.text,
               "--rdp-range_middle-background-color": theme.rangeSelected,
               "--rdp-caption-color": theme.text,
-              "--rdp-cell-size": "28px",
+              "--rdp-cell-size": "28px"
             }}
           />
         </div>

@@ -1,5 +1,6 @@
-import CategoryInput from "./CategoryInput"
+﻿import CategoryInput from "./CategoryInput"
 import { useEffect, useState } from "react"
+import { normalizeIssuesWithEpic, classifyTickets } from "../services/jiraService"
 
 const categories = [
   { key: "meetings", label: "Reuniones" },
@@ -9,150 +10,15 @@ const categories = [
   { key: "deploys", label: "Deploys" }
 ]
 
-const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
-
-async function fetchIssueByKey(key) {
-  try {
-    const res = await fetch(
-      `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/issues/${key}`
-    )
-
-    if (!res.ok) return null
-
-    return await res.json()
-  } catch (err) {
-    console.error(`Error trayendo issue ${key}:`, err)
-    return null
-  }
-}
-
-function getEpicNameFromIssue(issue) {
-  return (
-    issue?.fields?.epic?.name ||
-    issue?.fields?.parent?.fields?.summary ||
-    null
-  )
-}
-
-async function normalizeIssuesWithEpic(issues = []) {
-  const cache = new Map()
-
-  const normalized = await Promise.all(
-    issues.map(async (issue) => {
-      const parentKey = issue.fields?.parent?.key
-      let epicName = issue.fields?.epic?.name || null
-
-      if (parentKey) {
-        let parentIssue = cache.get(parentKey)
-
-        if (!parentIssue) {
-          parentIssue = await fetchIssueByKey(parentKey)
-          cache.set(parentKey, parentIssue)
-        }
-
-        const parentIsEpic =
-          parentIssue?.fields?.issuetype?.name === "Epic"
-
-        const parentHasParent =
-          !!parentIssue?.fields?.parent?.fields?.summary
-
-        if (parentHasParent) {
-          // issue actual = subtarea → parentIssue = tarea → parent del parent = épica
-          epicName = parentIssue.fields.parent.fields.summary
-        } else if (parentIsEpic) {
-          // issue actual = tarea → parentIssue = épica
-          epicName = parentIssue.fields.summary
-        } else {
-          // fallback conservador
-          epicName =
-            issue.fields?.epic?.name ||
-            parentIssue?.fields?.summary ||
-            issue.fields?.parent?.fields?.summary ||
-            null
-        }
-      }
-
-      return {
-        key: issue.key,
-        summary: issue.fields.summary,
-        status: issue.fields.status?.name,
-        epicName
-      }
-    })
-  )
-
-  return normalized
-}
-
-function buildTicketText(ticket) {
-  const url = `${JIRA_BASE}${ticket.key.split("-")[1]}`
-  const epicPrefix = ticket.epicName ? `${ticket.epicName} - ` : ""
-
-  return `${epicPrefix}${ticket.summary} ${url}`
-}
-
-function normalizeText(text = "") {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-}
-
-function classifyTickets(tickets) {
-
-  const result = {
-    analysis: [],
-    tasks: [],
-    reworks: []
-  }
-
-  tickets.forEach(t => {
-
-    const summaryNorm = normalizeText(t.summary)
-
-    // EXCLUSIONES
-    if (
-      summaryNorm.includes("[deploys]") ||
-      summaryNorm.includes("[gestion]") ||
-      summaryNorm.includes("[soporte]")
-    ) {
-      return
-    }
-
-    const ticketObj = {
-      text: buildTicketText(t),
-      dueDate: null,
-      eta: null
-    }
-
-    const isTesting = summaryNorm.includes("[testing]")
-    const isAnalysis = summaryNorm.includes("[analisis]")
-    const isDev = summaryNorm.includes("[desarrollo]")
-
-    if (isTesting) {
-      result.reworks.push(ticketObj)
-      return
-    }
-
-    if (isAnalysis) {
-      result.analysis.push(ticketObj)
-      return
-    }
-
-    if (isDev) {
-      result.tasks.push(ticketObj)
-      return
-    }
-
-  })
-
-  return result
-}
-
 export default function StandupEditor({ user, onChange, theme, titles, setTitles, dateRange }) {
   const [tickets, setTickets] = useState([])
   const [yesterdayTickets, setYesterdayTickets] = useState([])
 
+  useEffect(() => {
+    setTickets([])
+    setYesterdayTickets([])
+  }, [user?.dbId])
+  
   const update = (day, key, value) => {
     const copy = {
       ...user,
@@ -190,16 +56,13 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
     }
 
     fetchTickets()
-
   }, [user?.id])
 
   useEffect(() => {
-
     if (!dateRange?.start || !dateRange?.end) return
     if (!user?.id) return
 
     async function fetchWorklogs() {
-
       const res = await fetch(
         `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/search-date?accountIds=${encodeURIComponent(user?.id)}&startDate=${dateRange.start}&endDate=${dateRange.end}`
       )
@@ -217,7 +80,6 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
     }
 
     fetchWorklogs()
-
   }, [dateRange, user?.id])
 
   useEffect(() => {
@@ -267,7 +129,6 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               borderBottom: `1px solid ${theme.border}`,
               color: theme.text,
               marginBottom: "20px"
-
             }}
           />
 
@@ -315,7 +176,6 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
               theme={theme}
               tickets={tickets}
               yesterdayTickets={yesterdayTickets}
-
             />
           ))}
         </div>

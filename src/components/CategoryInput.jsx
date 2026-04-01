@@ -1,358 +1,67 @@
-import { useEffect, useState } from "react"
+﻿import { useCategoryInput } from "./CategoryInput/useCategoryInput"
+import CategoryEditor from "./CategoryInput/CategoryEditor"
+import CategoryChip from "./CategoryInput/CategoryChip"
+import QuickMeetings from "./CategoryInput/QuickMeetings"
+import { META_CATEGORIES, TICKET_CATEGORIES, JIRA_BASE } from "./CategoryInput/categoryInputConstants"
 
-const JIRA_BASE = "https://pierce-commerce.atlassian.net/browse/PIERCE-"
-const TICKET_CATEGORIES = ["analysis", "tasks", "reworks", "deploys"]
-const QUICK_MEETINGS = [
-    "Daily general",
-    "Status front",
-    "Grooming",
-    "Retro"
-]
 export default function CategoryInput({ label, values, onChange, type, theme, day, tickets, yesterdayTickets }) {
-    const [input, setInput] = useState("")
-    const [editingIndex, setEditingIndex] = useState(null)
-    const META_CATEGORIES = ["analysis", "tasks", "reworks"]
+    const {
+        input,
+        setInput,
+        editingIndex,
+        setEditingIndex,
+        suggestions,
+        add,
+        handleKey,
+        saveEdit,
+        toggleMeeting,
+        parseItem,
+        setSuggestions
+    } = useCategoryInput({ values, onChange, type, day, tickets, yesterdayTickets })
+
     const allowMeta = day === "today" && META_CATEGORIES.includes(type)
-    const [suggestions, setSuggestions] = useState([])
-    const isMeetings = type === 'meetings'
+    const isMeetings = type === "meetings"
     const isTicketCategory = TICKET_CATEGORIES.includes(type)
-    const saveEdit = () => {
-        if (editingIndex === null) return
-
-        const parsed = parseItem(values[editingIndex]?.text || "")
-
-        const copy = [...values]
-        copy[editingIndex] = {
-            ...copy[editingIndex],
-            text: parsed
-        }
-
-        onChange(copy)
-        setEditingIndex(null)
-    }
-
-    const parseItem = (raw) => {
-        if (!isTicketCategory) return raw
-
-        const parts = raw.split(":")
-        if (parts.length !== 2) return raw
-
-        const text = parts[0].trim()
-        const num = parts[1].trim()
-
-        if (!num.match(/^\d+$/)) return raw
-
-        return `${text} ${JIRA_BASE}${num}`
-    }
-
-    const add = () => {
-        const parts = input
-            .split(",")
-            .map(p => p.trim())
-            .filter(Boolean)
-
-        if (!parts.length) return
-
-        const newValues = [...values]
-
-        parts.forEach(raw => {
-            const parsed = parseItem(raw)
-            if (!newValues.some(v => v.text === parsed)) {
-
-                newValues.push({
-                    text: parsed,
-                    dueDate: null,
-                    eta: null
-                })
-            }
-        })
-
-        onChange(newValues)
-        setInput("")
-    }
-
-    const handleKey = e => {
-        if (e.key === "Enter") {
-            e.preventDefault()
-            add()
-        }
-    }
-
-    function toggleMeeting(label) {
-
-        const exists = values.some(v => v.text === label)
-
-        if (exists) {
-            onChange(values.filter(v => v.text !== label))
-        } else {
-            onChange([
-                ...values,
-                { text: label, dueDate: null, eta: null }
-            ])
-        }
-    }
-
-    useEffect(() => {
-        if (editingIndex !== null) {
-            if (!values[editingIndex]) {
-                setEditingIndex(null)
-            }
-        }
-    }, [values, editingIndex])
-
-    useEffect(() => {
-
-        if (!isTicketCategory) return
-
-        if (!input || input.length < 2) {
-            setSuggestions([])
-            return
-        }
-
-        const sourceTickets = day === "today" ? tickets : yesterdayTickets
-
-        if (!sourceTickets?.length) {
-            setSuggestions([])
-            return
-        }
-
-        const value = input.toLowerCase()
-        const filtered = sourceTickets
-            .filter(t =>
-                t.summary?.toLowerCase().includes(value) ||
-                t.key?.toLowerCase().includes(value) ||
-                t.key?.replace("PIERCE-", "").includes(value)
-            )
-            .slice(0, 5)
-            console.log(tickets)
-        setSuggestions(filtered)
-
-    }, [input, tickets, yesterdayTickets, day])
-
-    function Chip({ value, index, values, onChange, theme }) {
-
-        return (
-            <div
-                onClick={() => setEditingIndex(index)}
-                style={{
-                    background: theme.chip,
-                    color: theme.chipText,
-                    padding: "4px 10px",
-                    borderRadius: "999px",
-                    fontSize: "12px",
-                    cursor: "text",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "6px"
-                }}
-            >
-                {value.text}
-
-                {allowMeta && value.dueDate && (
-                    <span style={{ opacity: 0.7 }}>
-                        📅 {value.dueDate}
-                    </span>
-                )}
-
-                {allowMeta && value.eta && (
-                    <span style={{ opacity: 0.7 }}>
-                        ⏳ {value.eta}
-                    </span>
-                )}
-
-                <span
-                    onClick={e => {
-                        e.stopPropagation()
-                        onChange(values.filter((_, i) => i !== index))
-                    }}
-                    style={{ cursor: "pointer", opacity: 0.6 }}
-                >
-                    ❌
-                </span>
-            </div>
-        )
-    }
-
 
     return (
         <div style={{ marginBottom: "16px" }}>
             <strong style={{ color: theme.text }}>{label}</strong>
             {isMeetings && (
-                <div
-                    style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "10px",
-                        marginTop: "6px",
-                        marginBottom: "6px"
-                    }}
-                >
-                    {QUICK_MEETINGS.map(m => {
-
-                        const checked = values.some(v => v.text === m)
-
-                        return (
-                            <label
-                                key={m}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    background: checked ? theme.chip : "transparent",
-                                    border: `1px solid ${theme.border}`,
-                                    padding: "4px 8px",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                    fontSize: "12px"
-                                }}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleMeeting(m)}
-                                />
-                                {m}
-                            </label>
-                        )
-                    })}
-                </div>
+                <QuickMeetings
+                    values={values}
+                    onToggle={toggleMeeting}
+                    theme={theme}
+                />
             )}
+
             <div style={styles.chips}>
                 {values.map((ticket, i) => {
                     if (i === editingIndex) return null
 
                     return (
-                        <Chip
+                        <CategoryChip
                             key={ticket.text + i}
                             value={ticket}
                             index={i}
                             values={values}
-                            onChange={onChange}
-                            parseItem={parseItem}
+                            onEdit={setEditingIndex}
+                            onDelete={onChange}
+                            allowMeta={allowMeta}
                             theme={theme}
                         />
                     )
                 })}
-
             </div>
 
-            {editingIndex !== null && values[editingIndex] && (
-                <>
-                    <textarea
-                        ref={el => {
-                            if (el) {
-                                el.style.height = "auto"
-                                el.style.height = el.scrollHeight + "px"
-                            }
-                        }}
-                        autoFocus
-                        value={values[editingIndex]?.text || ""}
-                        onChange={e => {
-                            const copy = [...values]
-                            copy[editingIndex] = {
-                                ...copy[editingIndex],
-                                text: e.target.value
-                            }
-                            onChange(copy)
-
-                            e.target.style.height = "auto"
-                            e.target.style.height = e.target.scrollHeight + "px"
-                        }}
-                        onBlur={() => {
-                            const parsed = parseItem(values[editingIndex]?.text || "")
-                            const copy = [...values]
-                            copy[editingIndex] = {
-                                ...copy[editingIndex],
-                                text: parsed
-                            }
-                            onChange(copy)
-                        }}
-                        onKeyDown={e => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault()
-                                saveEdit()
-                            }
-                        }}
-
-                        style={{
-                            width: "100%",
-                            marginTop: "6px",
-                            padding: "4px 8px",
-                            borderRadius: "12px",
-                            border: `1px solid ${theme.border}`,
-                            background: theme.inputBg,
-                            color: theme.text,
-                            fontSize: "14px",
-                            resize: "none",
-                            overflow: "hidden",
-                            lineHeight: "1.4",
-                            boxSizing: "border-box"
-                        }}
-                    />
-                    {
-                        allowMeta && (
-                            <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
-                                <input
-                                    type="date"
-                                    value={values[editingIndex]?.dueDate || ""}
-                                    onChange={e => {
-                                        const copy = [...values]
-                                        copy[editingIndex].dueDate = e.target.value
-                                        onChange(copy)
-                                    }}
-                                    onKeyDown={e => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault()
-                                            saveEdit()
-                                        }
-                                    }}
-
-                                />
-
-                                <input
-                                    type="text"
-                                    placeholder="Ej: 2 días"
-                                    value={values[editingIndex]?.eta || ""}
-                                    onChange={e => {
-                                        const copy = [...values]
-                                        copy[editingIndex].eta = e.target.value
-                                        onChange(copy)
-                                    }}
-                                    onKeyDown={e => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault()
-                                            saveEdit()
-                                        }
-                                    }}
-
-                                />
-                            </div>
-                        )
-
-                    }
-
-
-
-                    <button
-                        onClick={saveEdit}
-                        style={{
-                            marginTop: "6px",
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                            borderRadius: "6px",
-                            border: `1px solid ${theme.border}`,
-                            background: theme.btnAddBg,
-                            color: theme.primary,
-                            cursor: "pointer"
-                        }}
-                    >
-                        Guardar
-                    </button>
-
-                </>
-            )}
-
+            <CategoryEditor
+                editingIndex={editingIndex}
+                values={values}
+                onChange={onChange}
+                saveEdit={saveEdit}
+                parseItem={parseItem}
+                allowMeta={allowMeta}
+                theme={theme}
+            />
 
             <div style={styles.row}>
                 <div style={{
@@ -361,7 +70,6 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                     position: "relative",
                     width: "100%"
                 }}>
-
                     <input
                         value={input}
                         onChange={e => setInput(e.target.value)}
@@ -378,6 +86,7 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             color: theme.text
                         }}
                     />
+
                     {suggestions.length > 0 && (
                         <div
                             style={{
@@ -398,16 +107,13 @@ export default function CategoryInput({ label, values, onChange, type, theme, da
                             {suggestions.map(s => (
                                 <div
                                     key={s.key}
-
                                     onClick={() => {
                                         const epicPrefix = s.epicName ? `${s.epicName} - ` : ""
                                         const parsed = `${epicPrefix}${s.summary} ${JIRA_BASE}${s.key.split("-")[1]}`
-
                                         const newValues = [
                                             ...values,
                                             { text: parsed, dueDate: null, eta: null }
                                         ]
-
                                         onChange(newValues)
                                         setSuggestions([])
                                         setInput("")
@@ -448,18 +154,6 @@ const styles = {
         flexWrap: "wrap",
         gap: "6px",
         margin: "6px 0"
-    },
-    chip: {
-        padding: "4px 10px",
-        borderRadius: "999px",
-        fontSize: "12px",
-        display: "flex",
-        alignItems: "center",
-        gap: "6px"
-    },
-    x: {
-        cursor: "pointer",
-        fontWeight: "bold"
     },
     row: {
         display: "flex",
