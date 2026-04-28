@@ -44,25 +44,57 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
       return
     }
 
-    const fetchTickets = async () => {
+    setTickets([])
+
+    const controller = new AbortController()
+    let active = true
+
+    const requestedUserId = user.id
+    const requestedUserName = user.name
+
+    const timeoutId = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/sprint/654/tickets?assigneeIds=${encodeURIComponent(user.id)}`
+          `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/sprint/755/tickets?assigneeIds=${encodeURIComponent(requestedUserId)}`,
+          { signal: controller.signal }
         )
 
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+
         const data = await res.json()
+        const issues = Array.isArray(data?.issues) ? data.issues : []
 
-        const normalizedTickets = await normalizeIssuesWithEpic(data.issues)
-        console.log(data.issues)
+        const normalizedTickets = await normalizeIssuesWithEpic(issues)
+
+        if (!active) return
+
         setTickets(normalizedTickets)
-      } catch (err) {
-        console.error("Error trayendo tickets:", err)
-        setTickets([])
-      }
-    }
 
-    fetchTickets()
-  }, [user?.id])
+        console.log("[TODAY TICKETS OK]", {
+          user: requestedUserName,
+          userId: requestedUserId,
+          count: issues.length,
+          keys: issues.map(i => i.key)
+        })
+      } catch (err) {
+        if (err.name === "AbortError") return
+
+        console.error("Error trayendo tickets:", err)
+
+        if (active) {
+          setTickets([])
+        }
+      }
+    }, 400)
+
+    return () => {
+      active = false
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [user?.id, user?.dbId])
 
   useEffect(() => {
     if (!dateRange?.start || !dateRange?.end) return
