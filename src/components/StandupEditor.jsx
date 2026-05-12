@@ -1,6 +1,7 @@
 ﻿import CategoryInput from "./CategoryInput"
 import { useEffect, useMemo, useState } from "react"
 import { normalizeIssuesWithEpic, classifyTickets } from "../services/jiraService"
+import { sprintId } from "../lib/supabaseClient"
 
 const categories = [
   { key: "meetings", label: "Reuniones" },
@@ -55,7 +56,7 @@ export default function StandupEditor({ user, onChange, theme, titles, setTitles
     const timeoutId = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/sprint/755/tickets?assigneeIds=${encodeURIComponent(requestedUserId)}`,
+          `https://apipierce.piercecommerce.com/alarm-monitoring/api/jira/sprint/${sprintId}/tickets?assigneeIds=${encodeURIComponent(requestedUserId)}`,
           { signal: controller.signal }
         )
 
